@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from gi.repository import Adw, Gtk, GLib, GObject  # type:ignore
+from gi.repository import Adw, Gtk, GLib, GObject, Gio  # type:ignore
 
 from errands.lib.animation import scroll
-from errands.lib.data import TaskData, UserData
+from errands.lib.data import TaskData, TaskDataGObject, UserData
 from errands.lib.gsettings import GSettings
 from errands.lib.logging import Log
 from errands.lib.sync.sync import Sync
@@ -32,7 +32,7 @@ class TaskList(Adw.Bin):
         self.list_uid: str = sidebar_row.uid
         self.sidebar_row: TaskListSidebarRow = sidebar_row
         self.__build_ui()
-        self.__load_tasks()
+        # self.__load_tasks()
 
     # ------ PRIVATE METHODS ------ #
 
@@ -74,41 +74,30 @@ class TaskList(Adw.Bin):
             on_click=self._on_scroll_up_btn_clicked,
         )
 
-        # Uncompleted list
-        self.uncompleted_task_list: Gtk.Box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL
-        )
+        self.task_list_model = Gio.ListStore(item_type=TaskDataGObject)
+        for task in [t for t in UserData.tasks if t.list_uid == self.list_uid]:
+            self.task_list_model.append(TaskDataGObject(task))
 
-        # Separator
-        self.task_lists_separator: Adw.Bin = Adw.Bin(
-            child=TitledSeparator(_("Completed"), (24, 24, 0, 0))
+        self.tasks_list: Gtk.ListBox = Gtk.ListBox(
+            margin_bottom=32,
+            selection_mode=Gtk.SelectionMode.NONE,
+            css_classes=["transparent"],
         )
-
-        # Completed list
-        self.completed_task_list: Gtk.Box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL, visible=False
+        self.tasks_list.bind_model(
+            self.task_list_model,
+            lambda task: Gtk.ListBoxRow(
+                child=Task(task.data, self), activatable=False, css_classes=["task"]
+            ),
         )
-        self.completed_task_list.bind_property(
-            "visible",
-            self.task_lists_separator,
-            "visible",
-            GObject.BindingFlags.SYNC_CREATE,
+        self.tasks_list.set_header_func(
+            lambda row, before: int(row.get_child().task_data.completed)
+            - int(before.get_child().task_data.completed)
         )
 
         # Scrolled window
         self.scrl: Gtk.ScrolledWindow = Gtk.ScrolledWindow(
             child=Adw.Clamp(
-                tightening_threshold=300,
-                maximum_size=1000,
-                child=ErrandsBox(
-                    orientation=Gtk.Orientation.VERTICAL,
-                    margin_bottom=32,
-                    children=[
-                        self.uncompleted_task_list,
-                        self.task_lists_separator,
-                        self.completed_task_list,
-                    ],
-                ),
+                tightening_threshold=300, maximum_size=1000, child=self.tasks_list
             )
         )
 
@@ -202,20 +191,24 @@ class TaskList(Adw.Bin):
 
     # ------ PUBLIC METHODS ------ #
 
-    def add_task(self, task: TaskData) -> Task:
+    def add_task(self, task: TaskData):
         Log.info(f"Task List: Add task '{task.uid}'")
 
-        on_top: bool = GSettings.get("task-list-new-task-position-top")
-        new_task = Task(task, self)
-        if not task.completed:
-            if on_top:
-                self.uncompleted_task_list.prepend(new_task)
-            else:
-                self.uncompleted_task_list.append(new_task)
+        if GSettings.get("task-list-new-task-position-top"):
+            self.task_list_model.insert(0, TaskDataGObject(task))
         else:
-            self.completed_task_list.prepend(new_task)
+            self.task_list_model.append(TaskDataGObject(task))
 
-        return new_task
+        # new_task = Task(task, self)
+        # if not task.completed:
+        #     if on_top:
+        #         self.uncompleted_task_list.prepend(new_task)
+        #     else:
+        #         self.uncompleted_task_list.append(new_task)
+        # else:
+        #     self.completed_task_list.prepend(new_task)
+
+        # return new_task
 
     def purge(self) -> None:
         State.sidebar.list_box.select_row(self.sidebar_row.get_prev_sibling())
@@ -248,16 +241,16 @@ class TaskList(Adw.Bin):
         self.delete_completed_btn.set_sensitive(n_completed > 0)
 
         # Update separator
-        toplevel_tasks: list[TaskData] = [
-            t
-            for t in UserData.get_tasks_as_dicts(self.list_uid, "")
-            if not t.deleted and not t.trash
-        ]
-        n_completed: int = len([t for t in toplevel_tasks if t.completed])
-        n_total: int = len(toplevel_tasks)
-        self.task_lists_separator.get_child().set_visible(
-            n_completed > 0 and n_completed != n_total
-        )
+        # toplevel_tasks: list[TaskData] = [
+        #     t
+        #     for t in UserData.get_tasks_as_dicts(self.list_uid, "")
+        #     if not t.deleted and not t.trash
+        # ]
+        # n_completed: int = len([t for t in toplevel_tasks if t.completed])
+        # n_total: int = len(toplevel_tasks)
+        # self.task_lists_separator.get_child().set_visible(
+        #     n_completed > 0 and n_completed != n_total
+        # )
 
     def update_tasks(self) -> None:
         # Update tasks
@@ -363,8 +356,7 @@ class TaskList(Adw.Bin):
             )
         )
         entry.set_text("")
-        if not GSettings.get("task-list-new-task-position-top"):
-            scroll(self.scrl, True)
+        scroll(self.scrl, not GSettings.get("task-list-new-task-position-top"))
 
         self.update_title()
         Sync.sync()

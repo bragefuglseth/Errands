@@ -15,7 +15,7 @@ from threading import Thread
 from typing import Any, Iterable
 from uuid import uuid4
 
-from gi.repository import GLib  # type:ignore
+from gi.repository import GLib, GObject  # type:ignore
 
 from errands.lib.gsettings import GSettings
 from errands.lib.logging import Log
@@ -204,6 +204,12 @@ class TaskData:
                 task.toolbar_shown = bool(int(value))
 
         return task
+
+
+class TaskDataGObject(GObject.Object):
+    def __init__(self, data: TaskData) -> None:
+        super().__init__()
+        self.data = data
 
 
 class UserDataJSON:
