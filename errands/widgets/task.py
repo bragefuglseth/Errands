@@ -685,42 +685,46 @@ class Task(Gtk.Revealer):
 
         # Change prop
         self.update_props(["completed", "synced"], [btn.get_active(), False])
+        self.task_list.task_list_model.sort(
+            lambda row1, row2: int(row1.data.completed) - int(row2.data.completed)
+        )
+        self.task_list.tasks_list.invalidate_headers()
 
         # Move section
-        self.get_parent().remove(self)
-        if btn.get_active():
-            self.parent.completed_task_list.prepend(self)
-        else:
-            self.parent.uncompleted_task_list.append(self)
+        # self.get_parent().remove(self)
+        # if btn.get_active():
+        #     self.parent.completed_task_list.prepend(self)
+        # else:
+        #     self.parent.uncompleted_task_list.append(self)
 
-        # Complete all sub-tasks if toggle is active
-        if btn.get_active():
-            for task in self.uncompleted_tasks:
-                task.can_sync = False
-                task.complete_btn.set_active(True)
-                task.can_sync = True
+        # # Complete all sub-tasks if toggle is active
+        # if btn.get_active():
+        #     for task in self.uncompleted_tasks:
+        #         task.can_sync = False
+        #         task.complete_btn.set_active(True)
+        #         task.can_sync = True
 
-        # Uncomplete parents if sub-task is uncompleted
-        else:
-            for task in self.parents_tree:
-                if task.complete_btn.get_active():
-                    task.can_sync = False
-                    task.complete_btn.set_active(False)
-                    task.can_sync = True
+        # # Uncomplete parents if sub-task is uncompleted
+        # else:
+        #     for task in self.parents_tree:
+        #         if task.complete_btn.get_active():
+        #             task.can_sync = False
+        #             task.complete_btn.set_active(False)
+        #             task.can_sync = True
 
-        # Update parent Task
-        if isinstance(self.parent, Task):
-            self.parent.update_progress_bar()
-            self.parent.update_title()
+        # # Update parent Task
+        # if isinstance(self.parent, Task):
+        #     self.parent.update_progress_bar()
+        #     self.parent.update_title()
 
-        # Update parent TaskList
-        self.task_list.update_title()
+        # # Update parent TaskList
+        # self.task_list.update_title()
 
-        self.update_title()
-        self.update_progress_bar()
-        State.today_page.update_status()
-        if self.can_sync:
-            Sync.sync()
+        # self.update_title()
+        # self.update_progress_bar()
+        # State.today_page.update_status()
+        # if self.can_sync:
+        #     Sync.sync()
 
     def _on_edit_row_applied(self, entry: Adw.EntryRow) -> None:
         text: str = entry.props.text.strip()

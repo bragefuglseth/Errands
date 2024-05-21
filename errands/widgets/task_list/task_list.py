@@ -14,7 +14,6 @@ from errands.lib.logging import Log
 from errands.lib.sync.sync import Sync
 from errands.lib.utils import get_children
 from errands.state import State
-from errands.widgets.shared.components.boxes import ErrandsBox
 from errands.widgets.shared.components.buttons import ErrandsButton, ErrandsToggleButton
 from errands.widgets.shared.components.header_bar import ErrandsHeaderBar
 from errands.widgets.shared.components.entries import ErrandsEntryRow
@@ -89,10 +88,19 @@ class TaskList(Adw.Bin):
                 child=Task(task.data, self), activatable=False, css_classes=["task"]
             ),
         )
-        self.tasks_list.set_header_func(
-            lambda row, before: int(row.get_child().task_data.completed)
-            - int(before.get_child().task_data.completed)
-        )
+
+        def header_func(row: Gtk.ListBoxRow, before: Gtk.ListBoxRow):
+            if not before:
+                row.set_header(None)
+            else:
+                row_cmp: int = int(row.get_child().task_data.completed)
+                beffore_cmp: int = int(before.get_child().task_data.completed)
+                if beffore_cmp < row_cmp:
+                    row.set_header(TitledSeparator(_("Completed"), (24, 24, 0, 0)))
+                else:
+                    row.set_header(None)
+
+        self.tasks_list.set_header_func(header_func)
 
         # Scrolled window
         self.scrl: Gtk.ScrolledWindow = Gtk.ScrolledWindow(
@@ -165,7 +173,7 @@ class TaskList(Adw.Bin):
     def tasks(self) -> list[Task]:
         """Top-level Tasks"""
 
-        return self.uncompleted_tasks + self.completed_tasks
+        return get_children(self.tasks_list)
 
     @property
     def all_tasks(self) -> list[Task]:
@@ -181,14 +189,6 @@ class TaskList(Adw.Bin):
         __add_task(self.tasks)
         return all_tasks
 
-    @property
-    def uncompleted_tasks(self) -> list[Task]:
-        return get_children(self.uncompleted_task_list)
-
-    @property
-    def completed_tasks(self) -> list[Task]:
-        return get_children(self.completed_task_list)
-
     # ------ PUBLIC METHODS ------ #
 
     def add_task(self, task: TaskData):
@@ -198,17 +198,6 @@ class TaskList(Adw.Bin):
             self.task_list_model.insert(0, TaskDataGObject(task))
         else:
             self.task_list_model.append(TaskDataGObject(task))
-
-        # new_task = Task(task, self)
-        # if not task.completed:
-        #     if on_top:
-        #         self.uncompleted_task_list.prepend(new_task)
-        #     else:
-        #         self.uncompleted_task_list.append(new_task)
-        # else:
-        #     self.completed_task_list.prepend(new_task)
-
-        # return new_task
 
     def purge(self) -> None:
         State.sidebar.list_box.select_row(self.sidebar_row.get_prev_sibling())
