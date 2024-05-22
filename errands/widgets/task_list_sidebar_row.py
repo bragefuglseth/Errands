@@ -15,24 +15,16 @@ from errands.widgets.shared.components.boxes import ErrandsBox
 from errands.widgets.shared.components.dialogs import ConfirmDialog
 from errands.widgets.shared.components.menus import ErrandsMenuItem, ErrandsSimpleMenu
 from errands.widgets.task import Task
-from errands.widgets.task_list.task_list import TaskList
 
 
-class TaskListSidebarRow(Gtk.ListBoxRow):
+class ErrandsTaskListSidebarRow(Gtk.ListBoxRow):
     block_signals: bool = False
 
     def __init__(self, list_data: TaskListData) -> None:
         super().__init__()
         self.list_data = list_data
-        self.uid: str = list_data.uid
-        self.name: str = list_data.name
         self.__add_actions()
         self.__build_ui()
-        # Add Task List page
-        self.task_list: TaskList = TaskList(self)
-        self.stack_page: Adw.ViewStackPage = State.view_stack.add_titled(
-            child=self.task_list, name=self.name, title=self.name
-        )
         self.update_ui(False)
 
     def __add_actions(self) -> None:
@@ -138,18 +130,18 @@ class TaskListSidebarRow(Gtk.ListBoxRow):
     def __build_ui(self) -> None:
         self.props.height_request = 45
         self.add_css_class("sidebar-item")
-        self.connect("activate", self._on_row_activated)
+        self.connect("activate", self.__on_row_activated)
 
         # Drop controller
         drop_ctrl: Gtk.DropTarget = Gtk.DropTarget.new(
             type=Task, actions=Gdk.DragAction.MOVE
         )
-        drop_ctrl.connect("drop", self._on_task_drop)
+        drop_ctrl.connect("drop", self.__on_task_drop)
         self.add_controller(drop_ctrl)
 
         # Drag Hover controller
         drag_hover_ctrl: Gtk.DropControllerMotion = Gtk.DropControllerMotion()
-        drag_hover_ctrl.connect("enter", self._on_drop_hover)
+        drag_hover_ctrl.connect("enter", self.__on_drop_hover)
         self.add_controller(drag_hover_ctrl)
 
         # Color button
@@ -175,7 +167,7 @@ class TaskListSidebarRow(Gtk.ListBoxRow):
 
         # Right-click
         right_click = Gtk.GestureClick(button=3)
-        right_click.connect("released", self._on_row_pressed)
+        right_click.connect("released", self.__on_row_pressed)
         self.add_controller(right_click)
 
         # Context menu
@@ -204,13 +196,11 @@ class TaskListSidebarRow(Gtk.ListBoxRow):
         )
 
     def update_ui(self, update_task_list_ui: bool = True):
-        Log.debug(f"Task List Row: Update UI '{self.uid}'")
+        Log.debug(f"Task List Row: Update UI '{self.list_data.uid}'")
 
         # Update title
-        self.name = UserData.get_list_prop(self.uid, "name")
-        self.label.set_label(self.name)
-        self.stack_page.set_name(self.name)
-        self.stack_page.set_title(self.name)
+        self.label.set_label(self.list_data.name)
+        State.task_list_page.title.set_title(self.list_data.name)
 
         color: Gdk.RGBA = Gdk.RGBA()
         color.parse(self.list_data.color)
@@ -218,11 +208,11 @@ class TaskListSidebarRow(Gtk.ListBoxRow):
         self.color_btn.set_rgba(color)
         self.block_signals = False
 
-        # Update task list
-        if update_task_list_ui:
-            self.task_list.update_ui()
+        # # Update task list
+        # if update_task_list_ui:
+        #     self.task_list.update_ui()
 
-    def _on_drop_hover(self, ctrl: Gtk.DropControllerMotion, _x, _y):
+    def __on_drop_hover(self, ctrl: Gtk.DropControllerMotion, _x, _y):
         """
         Switch list on dnd hover after DELAY_SECONDS
         """
@@ -230,7 +220,7 @@ class TaskListSidebarRow(Gtk.ListBoxRow):
         DELAY_SECONDS: float = 0.7
         entered_at: float = time.time()
 
-        def _switch_delay():
+        def __switch_delay():
             if ctrl.contains_pointer():
                 if time.time() - entered_at >= DELAY_SECONDS:
                     self.activate()
@@ -240,20 +230,34 @@ class TaskListSidebarRow(Gtk.ListBoxRow):
             else:
                 return False
 
-        GLib.timeout_add(100, _switch_delay)
+        GLib.timeout_add(100, __switch_delay)
 
-    def _on_task_drop(self, _drop, task: Task, _x, _y):
+    def __on_row_activated(self, *args) -> None:
+        Log.debug(f"Sidebar: Switch to list '{self.list_data.uid}'")
+
+        GSettings.set("last-open-list", "s", self.list_data.name)
+        State.view_stack.set_visible_child(State.task_list_page)
+        State.split_view.set_show_content(True)
+
+    def __on_row_pressed(self, _gesture_click, _n_press, x, y) -> None:
+        position = Gdk.Rectangle()
+        position.x = x
+        position.y = y
+        self.popover_menu.set_pointing_to(position)
+        self.popover_menu.popup()
+
+    def __on_task_drop(self, _drop, task: Task, _x, _y):
         """
         Move task and sub-tasks to new list
         """
 
-        if task.list_uid == self.uid:
+        if task.list_uid == self.list_data.uid:
             return
         old_task_list = task.task_list
 
-        Log.info(f"Lists: Move '{task.uid}' to '{self.uid}' list")
+        Log.info(f"Lists: Move '{task.uid}' to '{self.list_data.uid}' list")
 
-        UserData.move_task_to_list(task.uid, task.list_uid, self.uid, "")
+        UserData.move_task_to_list(task.uid, task.list_uid, self.list_data.uid, "")
 
         if isinstance(task.parent, Task):
             task.parent.update_progress_bar()
@@ -265,20 +269,6 @@ class TaskListSidebarRow(Gtk.ListBoxRow):
         self.task_list.update_ui()
 
         Sync.sync()
-
-    def _on_row_activated(self, *args) -> None:
-        Log.debug(f"Sidebar: Switch to list '{self.uid}'")
-
-        State.view_stack.set_visible_child_name(self.label.get_label())
-        State.split_view.set_show_content(True)
-        GSettings.set("last-open-list", "s", self.name)
-
-    def _on_row_pressed(self, _gesture_click, _n_press, x, y) -> None:
-        position = Gdk.Rectangle()
-        position.x = x
-        position.y = y
-        self.popover_menu.set_pointing_to(position)
-        self.popover_menu.popup()
 
     def __on_color_selected(self, btn: Gtk.ColorDialogButton, _):
         if self.block_signals:

@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from errands.widgets.task_list.task_list import TaskList
 
 
-class Task(Gtk.Revealer):
+class Task(Gtk.ListBoxRow):
     block_signals: bool = True
     purging: bool = False
     can_sync: bool = True
@@ -92,6 +92,7 @@ class Task(Gtk.Revealer):
         __create_action("move_to_trash", lambda *_: self.delete())
 
     def __build_ui(self):
+        self.add_css_class("task")
         # --- TOP DROP AREA --- #
         top_drop_area_img: Gtk.Image = Gtk.Image(
             icon_name="errands-add-symbolic",
@@ -337,8 +338,8 @@ class Task(Gtk.Revealer):
 
         self.main_box: ErrandsBox = ErrandsBox(
             orientation=Gtk.Orientation.VERTICAL,
-            margin_start=12,
-            margin_end=12,
+            margin_start=6,
+            margin_end=6,
             css_classes=["card", "fade"],
             children=[
                 title_box,
@@ -383,8 +384,8 @@ class Task(Gtk.Revealer):
             else:
                 self.uncompleted_task_list.append(new_task)
 
-        self.set_reveal_child(self.task_data.expanded)
-        self.toggle_visibility(not self.task_data.trash)
+        # self.get_child().set_reveal_child(self.task_data.expanded)
+        # self.toggle_visibility(not self.task_data.trash)
         self.expand(self.task_data.expanded)
         self.update_color()
         self.update_title()
@@ -536,7 +537,7 @@ class Task(Gtk.Revealer):
         UserData.update_props(self.list_uid, self.uid, props, values)
 
     def toggle_visibility(self, on: bool) -> None:
-        GLib.idle_add(self.set_reveal_child, on)
+        GLib.idle_add(self.get_child().set_reveal_child, on)
 
     def update_title(self) -> None:
         # Update title
@@ -685,10 +686,8 @@ class Task(Gtk.Revealer):
 
         # Change prop
         self.update_props(["completed", "synced"], [btn.get_active(), False])
-        self.task_list.task_list_model.sort(
-            lambda row1, row2: int(row1.data.completed) - int(row2.data.completed)
-        )
-        self.task_list.tasks_list.invalidate_headers()
+        self.task_list.tasks_list.invalidate_sort()
+        # self.task_list.tasks_list.invalidate_headers()
 
         # Move section
         # self.get_parent().remove(self)

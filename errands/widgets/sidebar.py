@@ -21,8 +21,7 @@ from errands.widgets.shared.components.menus import (
 from errands.widgets.shared.components.toolbar_view import ErrandsToolbarView
 from errands.widgets.shared.titled_separator import TitledSeparator
 from errands.widgets.tags.tags_sidebar_row import TagsSidebarRow
-from errands.widgets.task_list.task_list import TaskList
-from errands.widgets.task_list.task_list_sidebar_row import TaskListSidebarRow
+from errands.widgets.task_list_sidebar_row import ErrandsTaskListSidebarRow
 from errands.widgets.today.today_sidebar_row import TodaySidebarRow
 from errands.widgets.trash.trash_sidebar_row import TrashSidebarRow
 
@@ -164,7 +163,7 @@ class Sidebar(Adw.Bin):
             )
         )
 
-    def remove_task_list(self, row: TaskListSidebarRow) -> None:
+    def remove_task_list(self, row) -> None:
         Log.debug(f"Sidebar: Delete list {row.uid}")
         self.list_box.select_row(row.get_prev_sibling())
         State.view_stack.remove(row.task_list)
@@ -197,19 +196,16 @@ class Sidebar(Adw.Bin):
         return get_children(self.list_box)
 
     @property
-    def task_lists_rows(self) -> list[TaskListSidebarRow]:
+    def task_lists_rows(self) -> list[ErrandsTaskListSidebarRow]:
         """Get only task list rows"""
-        return [r for r in self.rows if isinstance(r, TaskListSidebarRow)]
-
-    @property
-    def task_lists(self) -> list[TaskList]:
-        return [lst.task_list for lst in self.task_lists_rows]
+        return [r for r in self.rows if isinstance(r, ErrandsTaskListSidebarRow)]
 
     # ------ PUBLIC METHODS ------ #
 
-    def add_task_list(self, list_dict: TaskListData) -> TaskListSidebarRow:
+    def add_task_list(self, list_dict: TaskListData):
         Log.debug(f"Sidebar: Add Task List '{list_dict.uid}'")
-        row: TaskListSidebarRow = TaskListSidebarRow(list_dict)
+
+        row: ErrandsTaskListSidebarRow = ErrandsTaskListSidebarRow(list_dict)
         self.list_box.append(row)
         self.status_page.set_visible(False)
         return row
@@ -219,9 +215,7 @@ class Sidebar(Adw.Bin):
 
         list_added: bool = False
 
-        for list in (
-            list for list in UserData.get_lists_as_dicts() if not list.deleted
-        ):
+        for list in (list for list in UserData.task_lists if not list.deleted):
             self.add_task_list(list)
             list_added = True
 
@@ -238,11 +232,11 @@ class Sidebar(Adw.Bin):
         # Delete lists
         uids: list[str] = [lst.uid for lst in lists]
         for row in self.task_lists_rows:
-            if row.uid not in uids:
+            if row.list_data.uid not in uids:
                 self.remove_task_list(row)
 
         # Add lists
-        lists_uids = [lst.uid for lst in self.task_lists_rows]
+        lists_uids = [lst.list_data.uid for lst in self.task_lists_rows]
         for lst in lists:
             if lst.uid not in lists_uids:
                 self.add_task_list(lst)

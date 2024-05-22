@@ -3,40 +3,33 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from gi.repository import Adw, Gtk, GLib, GObject, Gio  # type:ignore
+from gi.repository import Adw, GLib, GObject, Gtk  # type:ignore
 
 from errands.lib.animation import scroll
-from errands.lib.data import TaskData, TaskDataGObject, UserData
+from errands.lib.data import TaskData, UserData
 from errands.lib.gsettings import GSettings
 from errands.lib.logging import Log
 from errands.lib.sync.sync import Sync
 from errands.lib.utils import get_children
 from errands.state import State
 from errands.widgets.shared.components.buttons import ErrandsButton, ErrandsToggleButton
-from errands.widgets.shared.components.header_bar import ErrandsHeaderBar
 from errands.widgets.shared.components.entries import ErrandsEntryRow
+from errands.widgets.shared.components.header_bar import ErrandsHeaderBar
 from errands.widgets.shared.components.toolbar_view import ErrandsToolbarView
 from errands.widgets.shared.titled_separator import TitledSeparator
 from errands.widgets.task import Task
 
-if TYPE_CHECKING:
-    from errands.widgets.task_list.task_list_sidebar_row import TaskListSidebarRow
 
+class ErrandsTaskListPage(Adw.Bin):
+    list_uid: str | None = None
 
-class TaskList(Adw.Bin):
-    def __init__(self, sidebar_row: TaskListSidebarRow) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.list_uid: str = sidebar_row.uid
-        self.sidebar_row: TaskListSidebarRow = sidebar_row
+        State.task_list_page = self
         self.__build_ui()
-        # self.__load_tasks()
+        self.__load_tasks()
 
     # ------ PRIVATE METHODS ------ #
-
-    def __repr__(self) -> str:
-        return f"<class 'TaskList' {self.list_uid}>"
 
     def __build_ui(self) -> None:
         # Title
@@ -73,40 +66,22 @@ class TaskList(Adw.Bin):
             on_click=self._on_scroll_up_btn_clicked,
         )
 
-        self.task_list_model = Gio.ListStore(item_type=TaskDataGObject)
-        for task in [t for t in UserData.tasks if t.list_uid == self.list_uid]:
-            self.task_list_model.append(TaskDataGObject(task))
-
         self.tasks_list: Gtk.ListBox = Gtk.ListBox(
             margin_bottom=32,
             selection_mode=Gtk.SelectionMode.NONE,
             css_classes=["transparent"],
         )
-        self.tasks_list.bind_model(
-            self.task_list_model,
-            lambda task: Gtk.ListBoxRow(
-                child=Task(task.data, self), activatable=False, css_classes=["task"]
-            ),
-        )
-
-        def header_func(row: Gtk.ListBoxRow, before: Gtk.ListBoxRow):
-            if not before:
-                row.set_header(None)
-            else:
-                row_cmp: int = int(row.get_child().task_data.completed)
-                beffore_cmp: int = int(before.get_child().task_data.completed)
-                if beffore_cmp < row_cmp:
-                    row.set_header(TitledSeparator(_("Completed"), (24, 24, 0, 0)))
-                else:
-                    row.set_header(None)
-
-        self.tasks_list.set_header_func(header_func)
 
         # Scrolled window
         self.scrl: Gtk.ScrolledWindow = Gtk.ScrolledWindow(
+            vexpand=True,
             child=Adw.Clamp(
-                tightening_threshold=300, maximum_size=1000, child=self.tasks_list
-            )
+                tightening_threshold=300,
+                maximum_size=1000,
+                margin_end=6,
+                margin_start=6,
+                child=self.tasks_list,
+            ),
         )
 
         # Adjustment
@@ -119,6 +94,47 @@ class TaskList(Adw.Bin):
         self.dnd_ctrl.connect("motion", self._on_dnd_scroll, adj)
         self.add_controller(self.dnd_ctrl)
 
+        top_entry: Adw.Clamp = Adw.Clamp(
+            maximum_size=1000,
+            tightening_threshold=300,
+            margin_end=6,
+            margin_start=6,
+            child=ErrandsEntryRow(
+                margin_bottom=6,
+                margin_end=6,
+                margin_start=6,
+                title=_("Add new Task"),
+                activatable=False,
+                height_request=50,
+                css_classes=["card"],
+                on_entry_activated=self._on_task_added,
+            ),
+        )
+
+        bottom_entry: Adw.Clamp = Adw.Clamp(
+            maximum_size=1000,
+            tightening_threshold=300,
+            margin_end=6,
+            margin_start=6,
+            child=ErrandsEntryRow(
+                margin_top=6,
+                margin_bottom=6,
+                margin_end=6,
+                margin_start=6,
+                title=_("Add new Task"),
+                activatable=False,
+                height_request=40,
+                css_classes=["card"],
+                on_entry_activated=self._on_task_added,
+            ),
+        )
+        top_entry.bind_property(
+            "visible",
+            bottom_entry,
+            "visible",
+            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN,
+        )
+
         self.set_child(
             ErrandsToolbarView(
                 top_bars=[
@@ -129,45 +145,42 @@ class TaskList(Adw.Bin):
                         ],
                         title_widget=self.title,
                     ),
-                    Adw.Clamp(
-                        maximum_size=1000,
-                        tightening_threshold=300,
-                        child=ErrandsEntryRow(
-                            margin_top=3,
-                            margin_bottom=3,
-                            margin_end=12,
-                            margin_start=12,
-                            title=_("Add new Task"),
-                            activatable=False,
-                            height_request=60,
-                            css_classes=["card"],
-                            on_entry_activated=self._on_task_added,
-                        ),
-                    ),
+                    top_entry,
                 ],
                 content=self.scrl,
+                bottom_bars=[bottom_entry],
             )
         )
 
     def __load_tasks(self) -> None:
-        Log.info(f"Task List {self.list_uid}: Load Tasks")
+        def __sort_func(item: Task, item_before: Task) -> bool:
+            if item_before:
+                return int(item_before.task_data.completed) < int(
+                    item.task_data.completed
+                )
 
-        tasks: list[TaskData] = [
-            t for t in UserData.get_tasks_as_dicts(self.list_uid, "") if not t.deleted
-        ]
-        for task in tasks:
-            new_task = Task(task, self)
-            if task.completed:
-                self.completed_task_list.append(new_task)
+        def __header_func(item: Task, item_before: Task) -> bool:
+            if not item_before:
+                item.set_header(None)
             else:
-                self.uncompleted_task_list.append(new_task)
+                item.set_header(
+                    TitledSeparator(_("Completed"), (24, 24, 0, 0))
+                    if int(item_before.task_data.completed)
+                    < int(item.task_data.completed)
+                    else None
+                )
 
-        self.toggle_completed_btn.set_active(
-            UserData.get_list_prop(self.list_uid, "show_completed")
-        )
-        self.update_title()
+        self.tasks_list.set_sort_func(__sort_func)
+        self.tasks_list.set_header_func(__header_func)
+
+        for task in self.tasks_data:
+            self.tasks_list.append(Task(task, self))
 
     # ------ PROPERTIES ------ #
+
+    @property
+    def tasks_data(self) -> list[TaskData]:
+        return [t for t in UserData.tasks if not t.deleted]
 
     @property
     def tasks(self) -> list[Task]:
@@ -195,16 +208,16 @@ class TaskList(Adw.Bin):
         Log.info(f"Task List: Add task '{task.uid}'")
 
         if GSettings.get("task-list-new-task-position-top"):
-            self.task_list_model.insert(0, TaskDataGObject(task))
+            self.tasks_list.prepend(Task(task, self))
         else:
-            self.task_list_model.append(TaskDataGObject(task))
+            self.tasks_list.append(Task(task, self))
 
-    def purge(self) -> None:
-        State.sidebar.list_box.select_row(self.sidebar_row.get_prev_sibling())
-        State.sidebar.list_box.remove(self.sidebar_row)
-        State.view_stack.remove(self)
-        self.sidebar_row.run_dispose()
-        self.run_dispose()
+    def delete_list(self, uid: str):
+        Log.info(f"Task List: Delete list '{uid}'")
+
+        for task in self.tasks:
+            if task.list_uid == uid:
+                task.purge()
 
     # - UPDATE UI FUNCTIONS - #
 
@@ -221,10 +234,10 @@ class TaskList(Adw.Bin):
         )
 
         # Update sidebar item counter
-        n_uncompleted: int = n_total - n_completed
-        self.sidebar_row.size_counter.set_label(
-            str(n_uncompleted) if n_uncompleted > 0 else ""
-        )
+        # n_uncompleted: int = n_total - n_completed
+        # self.sidebar_row.size_counter.set_label(
+        #     str(n_uncompleted) if n_uncompleted > 0 else ""
+        # )
 
         # Update delete completed button
         self.delete_completed_btn.set_sensitive(n_completed > 0)
@@ -241,55 +254,55 @@ class TaskList(Adw.Bin):
         #     n_completed > 0 and n_completed != n_total
         # )
 
-    def update_tasks(self) -> None:
-        # Update tasks
-        tasks: list[TaskData] = [
-            t for t in UserData.get_tasks_as_dicts(self.list_uid, "") if not t.deleted
-        ]
-        tasks_uids: list[str] = [t.uid for t in tasks]
-        widgets_uids: list[str] = [t.uid for t in self.tasks]
+    # def update_tasks(self) -> None:
+    #     # Update tasks
+    #     tasks: list[TaskData] = [
+    #         t for t in UserData.get_tasks_as_dicts(self.list_uid, "") if not t.deleted
+    #     ]
+    #     tasks_uids: list[str] = [t.uid for t in tasks]
+    #     widgets_uids: list[str] = [t.uid for t in self.tasks]
 
-        # Add tasks
-        for task in tasks:
-            if task.uid not in widgets_uids:
-                self.add_task(task)
+    #     # Add tasks
+    #     for task in tasks:
+    #         if task.uid not in widgets_uids:
+    #             self.add_task(task)
 
-        for task in self.tasks:
-            # Remove task
-            if task.uid not in tasks_uids:
-                task.purge()
-            # Move task to completed tasks
-            elif task.task_data.completed and task in self.uncompleted_tasks:
-                if (
-                    len(self.uncompleted_tasks) > 1
-                    and task.uid != self.uncompleted_tasks[-1].uid
-                ):
-                    UserData.move_task_after(
-                        self.list_uid,
-                        task.uid,
-                        self.uncompleted_tasks[-1].uid,
-                    )
-                self.uncompleted_task_list.remove(task)
-                self.completed_task_list.prepend(task)
-            # Move task to uncompleted tasks
-            elif not task.task_data.completed and task in self.completed_tasks:
-                if (
-                    len(self.uncompleted_tasks) > 0
-                    and task.uid != self.uncompleted_tasks[-1].uid
-                ):
-                    UserData.move_task_after(
-                        self.list_uid,
-                        task.uid,
-                        self.uncompleted_tasks[-1].uid,
-                    )
-                self.completed_task_list.remove(task)
-                self.uncompleted_task_list.append(task)
-            if not task.get_reveal_child() and not task.task_data.trash:
-                task.toggle_visibility(True)
+    #     for task in self.tasks:
+    #         # Remove task
+    #         if task.uid not in tasks_uids:
+    #             task.purge()
+    #         # Move task to completed tasks
+    #         elif task.task_data.completed and task in self.uncompleted_tasks:
+    #             if (
+    #                 len(self.uncompleted_tasks) > 1
+    #                 and task.uid != self.uncompleted_tasks[-1].uid
+    #             ):
+    #                 UserData.move_task_after(
+    #                     self.list_uid,
+    #                     task.uid,
+    #                     self.uncompleted_tasks[-1].uid,
+    #                 )
+    #             self.uncompleted_task_list.remove(task)
+    #             self.completed_task_list.prepend(task)
+    #         # Move task to uncompleted tasks
+    #         elif not task.task_data.completed and task in self.completed_tasks:
+    #             if (
+    #                 len(self.uncompleted_tasks) > 0
+    #                 and task.uid != self.uncompleted_tasks[-1].uid
+    #             ):
+    #                 UserData.move_task_after(
+    #                     self.list_uid,
+    #                     task.uid,
+    #                     self.uncompleted_tasks[-1].uid,
+    #                 )
+    #             self.completed_task_list.remove(task)
+    #             self.uncompleted_task_list.append(task)
+    #         if not task.get_reveal_child() and not task.task_data.trash:
+    #             task.toggle_visibility(True)
 
-    def update_ui(self) -> None:
-        self.update_title()
-        self.update_tasks()
+    # def update_ui(self) -> None:
+    #     self.update_title()
+    #     self.update_tasks()
 
     # ------ SIGNAL HANDLERS ------ #
 
