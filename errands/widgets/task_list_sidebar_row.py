@@ -42,9 +42,9 @@ class ErrandsTaskListSidebarRow(Gtk.ListBoxRow):
                     Log.debug("ListItem: Deleting list is cancelled")
                     return
 
-                Log.info(f"Lists: Delete list '{self.uid}'")
-                UserData.delete_list(self.uid)
-                State.sidebar.remove_task_list(self)
+                Log.info(f"Lists: Delete list '{self.list_data.uid}'")
+                UserData.delete_list(self.list_data.uid)
+                # State.sidebar.remove_task_list(self)
                 Sync.sync()
 
             ConfirmDialog(
@@ -238,6 +238,8 @@ class ErrandsTaskListSidebarRow(Gtk.ListBoxRow):
         GSettings.set("last-open-list", "s", self.list_data.name)
         State.view_stack.set_visible_child(State.task_list_page)
         State.split_view.set_show_content(True)
+        State.task_list_page.list_uid = self.list_data.uid
+        State.task_list_page.update_title()
 
     def __on_row_pressed(self, _gesture_click, _n_press, x, y) -> None:
         position = Gdk.Rectangle()

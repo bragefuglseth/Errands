@@ -91,8 +91,8 @@ class Sidebar(Adw.Bin):
         self.list_box.set_header_func(
             lambda row, before: (
                 row.set_header(TitledSeparator(_("Task Lists"), (12, 12, 0, 2)))
-                if isinstance(row, TaskListSidebarRow)
-                and not isinstance(before, TaskListSidebarRow)
+                if isinstance(row, ErrandsTaskListSidebarRow)
+                and not isinstance(before, ErrandsTaskListSidebarRow)
                 else ...
             )
         )

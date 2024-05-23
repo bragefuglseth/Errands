@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-from gi.repository import Adw, GLib, GObject, Gtk  # type:ignore
+from gi.repository import Adw, GLib, GObject, Gtk, Gio  # type:ignore
 
 from errands.lib.animation import scroll
-from errands.lib.data import TaskData, UserData
+from errands.lib.data import TaskData, TaskDataGObject, UserData
 from errands.lib.gsettings import GSettings
 from errands.lib.logging import Log
 from errands.lib.sync.sync import Sync
@@ -67,9 +67,7 @@ class ErrandsTaskListPage(Adw.Bin):
         )
 
         self.tasks_list: Gtk.ListBox = Gtk.ListBox(
-            margin_bottom=32,
-            selection_mode=Gtk.SelectionMode.NONE,
-            css_classes=["transparent"],
+            margin_bottom=32, css_classes=["transparent"], selection_mode=0
         )
 
         # Scrolled window
@@ -152,29 +150,63 @@ class ErrandsTaskListPage(Adw.Bin):
             )
         )
 
+    def sort_completed_func(self, task1: Task, task2: Task, *data) -> GObject.TYPE_INT:
+        return int(task1.task_data.completed) - int(task2.task_data.completed)
+
     def __load_tasks(self) -> None:
-        def __sort_func(item: Task, item_before: Task) -> bool:
-            if item_before:
-                return int(item_before.task_data.completed) < int(
-                    item.task_data.completed
-                )
-
-        def __header_func(item: Task, item_before: Task) -> bool:
-            if not item_before:
-                item.set_header(None)
-            else:
-                item.set_header(
-                    TitledSeparator(_("Completed"), (24, 24, 0, 0))
-                    if int(item_before.task_data.completed)
-                    < int(item.task_data.completed)
-                    else None
-                )
-
-        self.tasks_list.set_sort_func(__sort_func)
-        self.tasks_list.set_header_func(__header_func)
-
+        self.task_list_model = Gio.ListStore(item_type=Task)
         for task in self.tasks_data:
-            self.tasks_list.append(Task(task, self))
+            self.task_list_model.insert_sorted(
+                Task(task, self), self.sort_completed_func
+            )
+
+        self.tasks_list.set_model(Gtk.NoSelection(model=self.task_list_model))
+        # self.task_list_sorter: Gtk.CustomSorter = Gtk.CustomSorter.new(
+        #     self.sort_completed_func
+        # )
+        # self.task_list_sort_completed_model = Gtk.SortListModel(
+        #     model=self.task_list_model
+        # )
+        # self.task_list_sort_completed_model.set_sorter(self.task_list_sorter)
+
+        # self.factory = Gtk.SignalListItemFactory()
+        # self.factory.connect(
+        #     "setup",
+        #     lambda factory, list_item: list_item.set_child(Task(self)),
+        # )
+        # self.factory.connect(
+        #     "bind",
+        #     lambda factory, list_item: list_item.get_child().set_data(
+        #         list_item.get_item().data
+        #     ),
+        # )
+        # self.tasks_list.set_model(Gtk.NoSelection(model=self.task_list_model))
+        # self.tasks_list.set_factory(self.factory)
+
+        # for task in self.tasks_data:
+        #     self.task_list_model.append(TaskDataGObject(task))
+        # def __sort_func(item: Task, item_before: Task) -> bool:
+        #     if item_before:
+        #         return int(item_before.task_data.completed) < int(
+        #             item.task_data.completed
+        #         )
+
+        # def __header_func(item: Task, item_before: Task) -> bool:
+        #     if not item_before:
+        #         item.set_header(None)
+        #     else:
+        #         item.set_header(
+        #             TitledSeparator(_("Completed"), (24, 24, 0, 0))
+        #             if int(item_before.task_data.completed)
+        #             < int(item.task_data.completed)
+        #             else None
+        #         )
+
+        # self.tasks_list.set_sort_func(__sort_func)
+        # self.tasks_list.set_header_func(__header_func)
+
+        # for task in self.tasks_data:
+        #     self.tasks_list.append(Task(task, self))
 
     # ------ PROPERTIES ------ #
 
@@ -208,9 +240,9 @@ class ErrandsTaskListPage(Adw.Bin):
         Log.info(f"Task List: Add task '{task.uid}'")
 
         if GSettings.get("task-list-new-task-position-top"):
-            self.tasks_list.prepend(Task(task, self))
+            self.task_list_model.insert(0, TaskDataGObject(task))
         else:
-            self.tasks_list.append(Task(task, self))
+            self.tasks_list.append(TaskDataGObject(task))
 
     def delete_list(self, uid: str):
         Log.info(f"Task List: Delete list '{uid}'")

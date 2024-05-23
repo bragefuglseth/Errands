@@ -30,16 +30,16 @@ if TYPE_CHECKING:
     from errands.widgets.task_list.task_list import TaskList
 
 
-class Task(Gtk.ListBoxRow):
+class Task(Gtk.Revealer):
     block_signals: bool = True
     purging: bool = False
     can_sync: bool = True
 
-    def __init__(self, task_data: TaskData, parent: TaskList | Task) -> None:
+    def __init__(self, task_data, parent) -> None:
         super().__init__()
-        self.task_data = task_data
-        self.list_uid = task_data.list_uid
-        self.uid = task_data.uid
+        self.task_data: TaskData = task_data
+        self.list_uid = self.task_data.list_uid
+        self.uid = self.task_data.uid
         self.parent = parent
         self.__build_ui()
         self.__add_actions()
@@ -288,8 +288,6 @@ class Task(Gtk.ListBoxRow):
         )
         # Build toolbar if needed
         self.toolbar = None
-        if self.task_data.toolbar_shown:
-            self.__build_toolbar()
 
         # --- SUB TASKS --- #
 
@@ -375,7 +373,9 @@ class Task(Gtk.ListBoxRow):
         tasks: list[TaskData] = (
             t
             for t in UserData.tasks
-            if not t.deleted and t.list_uid == self.list_uid and t.parent == self.uid
+            if not t.deleted
+            and t.list_uid == self.task_data.list_uid
+            and t.parent == self.task_data.uid
         )
         for task in tasks:
             new_task = Task(task, self)
@@ -384,8 +384,11 @@ class Task(Gtk.ListBoxRow):
             else:
                 self.uncompleted_task_list.append(new_task)
 
-        # self.get_child().set_reveal_child(self.task_data.expanded)
-        # self.toggle_visibility(not self.task_data.trash)
+        if self.task_data.toolbar_shown:
+            self.__build_toolbar()
+
+        self.sub_tasks.set_reveal_child(self.task_data.expanded)
+        self.toggle_visibility(not self.task_data.trash)
         self.expand(self.task_data.expanded)
         self.update_color()
         self.update_title()
@@ -447,6 +450,12 @@ class Task(Gtk.ListBoxRow):
         return get_children(self.completed_task_list)
 
     # ------ PUBLIC METHODS ------ #
+
+    # def set_data(self, data: TaskData):
+    #     self.task_data = data
+    #     self.list_uid = self.task_data.list_uid
+    #     self.uid = self.task_data.uid
+    #     self.__load_sub_tasks()
 
     def add_tag(self, tag: str) -> None:
         self.tags_bar.append(Tag(tag, self))
@@ -537,7 +546,7 @@ class Task(Gtk.ListBoxRow):
         UserData.update_props(self.list_uid, self.uid, props, values)
 
     def toggle_visibility(self, on: bool) -> None:
-        GLib.idle_add(self.get_child().set_reveal_child, on)
+        GLib.idle_add(self.set_reveal_child, on)
 
     def update_title(self) -> None:
         # Update title
@@ -686,7 +695,9 @@ class Task(Gtk.ListBoxRow):
 
         # Change prop
         self.update_props(["completed", "synced"], [btn.get_active(), False])
-        self.task_list.tasks_list.invalidate_sort()
+        State.task_list_page.task_list_model.sort(
+            State.task_list_page.sort_completed_func
+        )
         # self.task_list.tasks_list.invalidate_headers()
 
         # Move section
