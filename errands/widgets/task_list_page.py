@@ -145,12 +145,6 @@ class ErrandsTaskListPage(Adw.Bin):
                             self.delete_completed_btn,
                         ],
                         title_widget=self.title,
-                        end_children=[
-                            ErrandsButton(
-                                label="Sort",
-                                on_click=lambda *_: self.compleded_sorter.changed(0),
-                            )
-                        ],
                     ),
                     top_entry,
                 ],
@@ -163,73 +157,20 @@ class ErrandsTaskListPage(Adw.Bin):
         return int(task1.task_data.completed) - int(task2.task_data.completed)
 
     def sort_tasks(self):
-        def __finish_sort():
-            self.tasks_list.set_can_focus(True)
-            return False
-
-        # print(self.tasks_list.get_focus_child())
-        # self.tasks_list.set_can_focus(False)
-        self.compleded_sorter.changed(0)
-        # GLib.timeout_add_seconds(1, __finish_sort)
+        self.sorter_completed.changed(0)
 
     def __load_tasks(self) -> None:
         self.task_list_model = Gio.ListStore(item_type=Task)
         for task in self.tasks_data:
             self.task_list_model.append(Task(task, self))
-        self.compleded_sorter: Gtk.CustomSorter = Gtk.CustomSorter.new(
+        self.sorter_completed: Gtk.CustomSorter = Gtk.CustomSorter.new(
             sort_func=self.sort_completed_func
         )
         self.completed_sort_model = Gtk.SortListModel(
-            section_sorter=self.compleded_sorter,
+            section_sorter=self.sorter_completed,
             model=self.task_list_model,
         )
         self.tasks_list.bind_model(self.completed_sort_model, lambda task: task)
-        # self.task_list_sorter: Gtk.CustomSorter = Gtk.CustomSorter.new(
-        #     self.sort_completed_func
-        # )
-        # self.task_list_sort_completed_model = Gtk.SortListModel(
-        #     model=self.task_list_model
-        # )
-        # self.task_list_sort_completed_model.set_sorter(self.task_list_sorter)
-
-        # self.factory = Gtk.SignalListItemFactory()
-        # self.factory.connect(
-        #     "setup",
-        #     lambda factory, list_item: list_item.set_child(Task(self)),
-        # )
-        # self.factory.connect(
-        #     "bind",
-        #     lambda factory, list_item: list_item.get_child().set_data(
-        #         list_item.get_item().data
-        #     ),
-        # )
-        # self.tasks_list.set_model(Gtk.NoSelection(model=self.task_list_model))
-        # self.tasks_list.set_factory(self.factory)
-
-        # for task in self.tasks_data:
-        #     self.task_list_model.append(TaskDataGObject(task))
-        # def __sort_func(item: Task, item_before: Task) -> bool:
-        #     if item_before:
-        #         return int(item_before.task_data.completed) < int(
-        #             item.task_data.completed
-        #         )
-
-        # def __header_func(item: Task, item_before: Task) -> bool:
-        #     if not item_before:
-        #         item.set_header(None)
-        #     else:
-        #         item.set_header(
-        #             TitledSeparator(_("Completed"), (24, 24, 0, 0))
-        #             if int(item_before.task_data.completed)
-        #             < int(item.task_data.completed)
-        #             else None
-        #         )
-
-        # self.tasks_list.set_sort_func(__sort_func)
-        # self.tasks_list.set_header_func(__header_func)
-
-        # for task in self.tasks_data:
-        #     self.tasks_list.append(Task(task, self))
 
     # ------ PROPERTIES ------ #
 
