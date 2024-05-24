@@ -67,7 +67,10 @@ class ErrandsTaskListPage(Adw.Bin):
         )
 
         self.tasks_list: Gtk.ListBox = Gtk.ListBox(
-            margin_bottom=32, css_classes=["transparent"], selection_mode=0
+            margin_bottom=32,
+            css_classes=["transparent"],
+            selection_mode=0,
+            focusable=False,
         )
 
         # Scrolled window
@@ -142,6 +145,12 @@ class ErrandsTaskListPage(Adw.Bin):
                             self.delete_completed_btn,
                         ],
                         title_widget=self.title,
+                        end_children=[
+                            ErrandsButton(
+                                label="Sort",
+                                on_click=lambda *_: self.compleded_sorter.changed(0),
+                            )
+                        ],
                     ),
                     top_entry,
                 ],
@@ -150,17 +159,31 @@ class ErrandsTaskListPage(Adw.Bin):
             )
         )
 
-    def sort_completed_func(self, task1: Task, task2: Task, *data) -> GObject.TYPE_INT:
+    def sort_completed_func(self, task1: Task, task2: Task, *_) -> int:
         return int(task1.task_data.completed) - int(task2.task_data.completed)
+
+    def sort_tasks(self):
+        def __finish_sort():
+            self.tasks_list.set_can_focus(True)
+            return False
+
+        # print(self.tasks_list.get_focus_child())
+        # self.tasks_list.set_can_focus(False)
+        self.compleded_sorter.changed(0)
+        # GLib.timeout_add_seconds(1, __finish_sort)
 
     def __load_tasks(self) -> None:
         self.task_list_model = Gio.ListStore(item_type=Task)
         for task in self.tasks_data:
-            self.task_list_model.insert_sorted(
-                Task(task, self), self.sort_completed_func
-            )
-
-        self.tasks_list.set_model(Gtk.NoSelection(model=self.task_list_model))
+            self.task_list_model.append(Task(task, self))
+        self.compleded_sorter: Gtk.CustomSorter = Gtk.CustomSorter.new(
+            sort_func=self.sort_completed_func
+        )
+        self.completed_sort_model = Gtk.SortListModel(
+            section_sorter=self.compleded_sorter,
+            model=self.task_list_model,
+        )
+        self.tasks_list.bind_model(self.completed_sort_model, lambda task: task)
         # self.task_list_sorter: Gtk.CustomSorter = Gtk.CustomSorter.new(
         #     self.sort_completed_func
         # )
@@ -240,9 +263,9 @@ class ErrandsTaskListPage(Adw.Bin):
         Log.info(f"Task List: Add task '{task.uid}'")
 
         if GSettings.get("task-list-new-task-position-top"):
-            self.task_list_model.insert(0, TaskDataGObject(task))
+            self.task_list_model.insert(0, Task(task, self))
         else:
-            self.tasks_list.append(TaskDataGObject(task))
+            self.tasks_list.append(Task(task, self))
 
     def delete_list(self, uid: str):
         Log.info(f"Task List: Delete list '{uid}'")
@@ -390,7 +413,7 @@ class ErrandsTaskListPage(Adw.Bin):
             )
         )
         entry.set_text("")
-        scroll(self.scrl, not GSettings.get("task-list-new-task-position-top"))
+        # scroll(self.scrl, not GSettings.get("task-list-new-task-position-top"))
 
         self.update_title()
         Sync.sync()

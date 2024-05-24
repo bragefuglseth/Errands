@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from errands.widgets.task_list.task_list import TaskList
 
 
-class Task(Gtk.Revealer):
+class Task(Gtk.ListBoxRow):
     block_signals: bool = True
     purging: bool = False
     can_sync: bool = True
@@ -388,7 +388,7 @@ class Task(Gtk.Revealer):
             self.__build_toolbar()
 
         self.sub_tasks.set_reveal_child(self.task_data.expanded)
-        self.toggle_visibility(not self.task_data.trash)
+        # self.toggle_visibility(not self.task_data.trash)
         self.expand(self.task_data.expanded)
         self.update_color()
         self.update_title()
@@ -695,9 +695,8 @@ class Task(Gtk.Revealer):
 
         # Change prop
         self.update_props(["completed", "synced"], [btn.get_active(), False])
-        State.task_list_page.task_list_model.sort(
-            State.task_list_page.sort_completed_func
-        )
+        State.task_list_page.sort_tasks()
+
         # self.task_list.tasks_list.invalidate_headers()
 
         # Move section
