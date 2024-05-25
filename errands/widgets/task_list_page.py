@@ -239,10 +239,10 @@ class ErrandsTaskListPage(Adw.Bin):
         )
 
         # Update sidebar item counter
-        # n_uncompleted: int = n_total - n_completed
-        # self.sidebar_row.size_counter.set_label(
-        #     str(n_uncompleted) if n_uncompleted > 0 else ""
-        # )
+        n_uncompleted: int = n_total - n_completed
+        State.get_sidebar_row(self.list_uid).size_counter.set_label(
+            str(n_uncompleted) if n_uncompleted > 0 else ""
+        )
 
         # Update delete completed button
         self.delete_completed_btn.set_sensitive(n_completed > 0)

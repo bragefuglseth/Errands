@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from gi.repository import Adw, Gio  # type:ignore
 
-
 from errands.lib.utils import get_children
 
 if TYPE_CHECKING:
@@ -24,6 +23,7 @@ if TYPE_CHECKING:
     from errands.widgets.tags.tags_sidebar_row import TagsSidebarRow
     from errands.widgets.task import Task
     from errands.widgets.task_list_page import ErrandsTaskListPage
+    from errands.widgets.task_list_sidebar_row import ErrandsTaskListSidebarRow
     from errands.widgets.today.today import Today
     from errands.widgets.today.today_sidebar_row import TodaySidebarRow
     from errands.widgets.trash.trash import Trash
@@ -113,3 +113,9 @@ class State:
         for task in cls.get_tasks():
             if task.uid == uid and task.list_uid == list_uid:
                 return task
+
+    @classmethod
+    def get_sidebar_row(cls, list_uid: str) -> ErrandsTaskListSidebarRow:
+        for row in cls.sidebar.task_lists_rows:
+            if row.list_data.uid == list_uid:
+                return row
