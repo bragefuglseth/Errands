@@ -34,6 +34,7 @@ class Task(Gtk.ListBoxRow):
 
     def __init__(self, task_data, parent) -> None:
         super().__init__()
+        print(task_data.text)
         self.task_data: TaskData = task_data
         self.list_uid = self.task_data.list_uid
         self.uid = self.task_data.uid

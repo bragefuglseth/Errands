@@ -207,9 +207,11 @@ class TaskData:
 
 
 class TaskDataGObject(GObject.Object):
+    """Object for use in list models"""
+
     def __init__(self, data: TaskData) -> None:
         super().__init__()
-        self.data = data
+        self.data: TaskData = data
 
 
 class UserDataJSON:

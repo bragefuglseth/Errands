@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from gi.repository import Adw  # type:ignore
+from gi.repository import Adw, Gio  # type:ignore
+
 
 from errands.lib.utils import get_children
 
@@ -34,13 +35,18 @@ class State:
     """Application's state class for accessing core widgets globally
     and some utils for quick access to deeper nested widgets"""
 
-    # Constants
+    # --- Constants --- #
+
     PROFILE: str | None = None
     APP_ID: str | None = None
     VERSION: str | None = None
 
+    # --- Daemons --- #
+
     # Notifications
     notifications_daemon: ErrandsNotificationsDaemon | None = None
+
+    # --- Widgets --- #
 
     # Application
     application: ErrandsApplication | None = None
@@ -72,8 +78,13 @@ class State:
     # Attachments window
     attachments_window: ErrandsAttachmentsWindow | None = None
 
+    # --- Models --- #
+
+    tasks_model: Gio.ListStore | None
+
     @classmethod
     def init(cls) -> None:
+        # Create windows widgets
         from errands.widgets.shared.task_toolbar import (
             ErrandsAttachmentsWindow,
             ErrandsDateTimeWindow,
@@ -83,6 +94,13 @@ class State:
         cls.notes_window = ErrandsNotesWindow()
         cls.datetime_window = ErrandsDateTimeWindow()
         cls.attachments_window = ErrandsAttachmentsWindow()
+
+        # Create models
+        from errands.lib.data import TaskDataGObject, UserData
+
+        cls.tasks_model = Gio.ListStore(item_type=TaskDataGObject)
+        for task in UserData.tasks:
+            cls.tasks_model.append(TaskDataGObject(task))
 
     @classmethod
     def get_tasks(cls) -> list[Task]:

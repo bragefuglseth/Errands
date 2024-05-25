@@ -160,9 +160,12 @@ class ErrandsTaskListPage(Adw.Bin):
         self.sorter_completed.changed(0)
 
     def __load_tasks(self) -> None:
-        self.task_list_model = Gio.ListStore(item_type=Task)
-        for task in self.tasks_data:
-            self.task_list_model.append(Task(task, self))
+        self.tasks_filter: Gtk.CustomFilter = Gtk.CustomFilter.new(
+            match_func=lambda item: item.data.list_uid == self.list_uid
+        )
+        self.task_list_model = Gtk.FilterListModel(
+            model=State.tasks_model, filter=self.tasks_filter
+        )
         self.sorter_completed: Gtk.CustomSorter = Gtk.CustomSorter.new(
             sort_func=self.sort_completed_func
         )
@@ -170,7 +173,9 @@ class ErrandsTaskListPage(Adw.Bin):
             section_sorter=self.sorter_completed,
             model=self.task_list_model,
         )
-        self.tasks_list.bind_model(self.completed_sort_model, lambda task: task)
+        self.tasks_list.bind_model(
+            self.completed_sort_model, lambda task: Task(task.data, self)
+        )
 
     # ------ PROPERTIES ------ #
 
