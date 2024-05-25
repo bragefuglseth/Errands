@@ -50,7 +50,7 @@ class ErrandsTaskToolbar(Gtk.FlowBox):
             ),
             on_click=lambda *_: State.datetime_window.show(self.task),
         )
-        self.append(self.date_time_btn)
+        self.append(Gtk.FlowBoxChild(focusable=False, child=self.date_time_btn))
 
         # Notes button
         self.notes_btn: ErrandsButton = ErrandsButton(
@@ -217,16 +217,19 @@ class ErrandsTaskToolbar(Gtk.FlowBox):
         menu_btn.connect("notify::active", self._on_menu_toggled)
 
         self.append(
-            ErrandsBox(
-                spacing=2,
-                halign=Gtk.Align.END,
-                children=[
-                    self.notes_btn,
-                    self.priority_btn,
-                    self.tags_btn,
-                    self.attachments_btn,
-                    menu_btn,
-                ],
+            Gtk.FlowBoxChild(
+                focusable=False,
+                child=ErrandsBox(
+                    spacing=2,
+                    halign=Gtk.Align.END,
+                    children=[
+                        self.notes_btn,
+                        self.priority_btn,
+                        self.tags_btn,
+                        self.attachments_btn,
+                        menu_btn,
+                    ],
+                ),
             )
         )
 

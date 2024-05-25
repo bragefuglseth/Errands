@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # type:ignore
 
@@ -25,9 +25,6 @@ from errands.widgets.shared.components.entries import ErrandsEntry
 from errands.widgets.shared.components.menus import ErrandsMenuItem, ErrandsSimpleMenu
 from errands.widgets.shared.task_toolbar import ErrandsTaskToolbar
 from errands.widgets.shared.titled_separator import TitledSeparator
-
-if TYPE_CHECKING:
-    from errands.widgets.task_list.task_list import TaskList
 
 
 class Task(Gtk.ListBoxRow):
@@ -93,6 +90,8 @@ class Task(Gtk.ListBoxRow):
 
     def __build_ui(self):
         self.add_css_class("task")
+        self.set_focusable(False)
+
         # --- TOP DROP AREA --- #
         top_drop_area_img: Gtk.Image = Gtk.Image(
             icon_name="errands-add-symbolic",
@@ -154,7 +153,9 @@ class Task(Gtk.ListBoxRow):
             tooltip_text=_("Toggle Sub-Tasks"),
             cursor=Gdk.Cursor(name="pointer"),
             css_classes=["transparent", "rounded-corners"],
+            activatable=True,
         )
+        self.title_row.connect("activate", self._on_title_row_clicked)
         title_box.append(self.title_row)
 
         # Complete button
