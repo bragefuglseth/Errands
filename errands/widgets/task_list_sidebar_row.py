@@ -238,9 +238,7 @@ class ErrandsTaskListSidebarRow(Gtk.ListBoxRow):
         GSettings.set("last-open-list", "s", self.list_data.name)
         State.view_stack.set_visible_child(State.task_list_page)
         State.split_view.set_show_content(True)
-        State.task_list_page.list_uid = self.list_data.uid
-        State.task_list_page.tasks_filter.changed(0)
-        State.task_list_page.update_title()
+        State.task_list_page.change_list(self.list_data.uid)
 
     def __on_row_pressed(self, _gesture_click, _n_press, x, y) -> None:
         position = Gdk.Rectangle()

@@ -153,6 +153,12 @@ class ErrandsTaskListPage(Adw.Bin):
             )
         )
 
+    def change_list(self, list_uid: str) -> None:
+        self.list_uid = list_uid
+        for task in self.tasks:
+            task.set_visible(task.list_uid == self.list_uid)
+        self.update_title()
+
     def sort_completed_func(self, task1: Task, task2: Task, *_) -> int:
         return int(task1.task_data.completed) - int(task2.task_data.completed)
 
@@ -160,22 +166,18 @@ class ErrandsTaskListPage(Adw.Bin):
         self.sorter_completed.changed(0)
 
     def __load_tasks(self) -> None:
-        self.tasks_filter: Gtk.CustomFilter = Gtk.CustomFilter.new(
-            match_func=lambda item: item.data.list_uid == self.list_uid
-        )
-        self.task_list_model = Gtk.FilterListModel(
-            model=State.tasks_model, filter=self.tasks_filter
-        )
+        self.tasks_model = Gio.ListStore(item_type=Task)
+        for task in [t for t in UserData.tasks if not t.deleted and not t.parent]:
+            self.tasks_model.append(Task(task, self))
+
         self.sorter_completed: Gtk.CustomSorter = Gtk.CustomSorter.new(
             sort_func=self.sort_completed_func
         )
         self.completed_sort_model = Gtk.SortListModel(
             section_sorter=self.sorter_completed,
-            model=self.task_list_model,
+            model=self.tasks_model,
         )
-        self.tasks_list.bind_model(
-            self.completed_sort_model, lambda task: Task(task.data, self)
-        )
+        self.tasks_list.bind_model(self.completed_sort_model, lambda task: task)
 
     # ------ PROPERTIES ------ #
 
@@ -209,9 +211,9 @@ class ErrandsTaskListPage(Adw.Bin):
         Log.info(f"Task List: Add task '{task.uid}'")
 
         if GSettings.get("task-list-new-task-position-top"):
-            self.task_list_model.insert(0, Task(task, self))
+            State.tasks_model.insert(0, TaskDataGObject(task))
         else:
-            self.tasks_list.append(Task(task, self))
+            State.tasks_model.append(TaskDataGObject(task))
 
     def delete_list(self, uid: str):
         Log.info(f"Task List: Delete list '{uid}'")

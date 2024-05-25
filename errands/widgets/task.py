@@ -91,7 +91,7 @@ class Task(Gtk.ListBoxRow):
 
     def __build_ui(self):
         self.add_css_class("task")
-        self.set_focusable(False)
+        # self.set_focusable(False)
 
         # --- TOP DROP AREA --- #
         top_drop_area_img: Gtk.Image = Gtk.Image(
@@ -697,9 +697,8 @@ class Task(Gtk.ListBoxRow):
 
         # Change prop
         self.update_props(["completed", "synced"], [btn.get_active(), False])
-        State.task_list_page.sort_tasks()
-
-        # self.task_list.tasks_list.invalidate_headers()
+        State.task_list_page.sorter_completed.changed(0)
+        State.task_list_page.change_list(self.list_uid)
 
         # Move section
         # self.get_parent().remove(self)
