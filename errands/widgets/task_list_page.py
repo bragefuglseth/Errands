@@ -154,6 +154,8 @@ class ErrandsTaskListPage(Adw.Bin):
         )
 
     def change_list(self, list_uid: str) -> None:
+        """Show tasks from `list_uid`"""
+
         self.list_uid = list_uid
         for task in self.tasks:
             task.set_visible(task.list_uid == self.list_uid)
@@ -211,9 +213,9 @@ class ErrandsTaskListPage(Adw.Bin):
         Log.info(f"Task List: Add task '{task.uid}'")
 
         if GSettings.get("task-list-new-task-position-top"):
-            State.tasks_model.insert(0, TaskDataGObject(task))
+            self.tasks_model.insert(0, Task(task, self))
         else:
-            State.tasks_model.append(TaskDataGObject(task))
+            self.tasks_model.append(Task(task, self))
 
     def delete_list(self, uid: str):
         Log.info(f"Task List: Delete list '{uid}'")
