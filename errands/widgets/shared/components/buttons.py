@@ -4,7 +4,7 @@
 
 from typing import Callable
 
-from gi.repository import Gtk  # type:ignore
+from gi.repository import Gtk, GObject  # type:ignore
 
 
 class ErrandsButton(Gtk.Button):
@@ -59,3 +59,24 @@ class ErrandsInfoButton(Gtk.MenuButton):
                 )
             )
         )
+
+
+class ErrandsSearchButton(Gtk.ToggleButton):
+    def __init__(self, search_bar: Gtk.SearchBar, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.set_icon_name("errands-search-symbolic")
+        self.set_tooltip_text(_("Toggle Search"))
+        self.bind_property(
+            "active",
+            search_bar,
+            "search-mode-enabled",
+            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+        )
+        shortcut_ctrl = Gtk.ShortcutController(scope=Gtk.ShortcutScope.GLOBAL)
+        shortcut_ctrl.add_shortcut(
+            Gtk.Shortcut(
+                action=Gtk.ShortcutAction.parse_string("activate"),
+                trigger=Gtk.ShortcutTrigger.parse_string("<Control>f"),
+            )
+        )
+        self.add_controller(shortcut_ctrl)

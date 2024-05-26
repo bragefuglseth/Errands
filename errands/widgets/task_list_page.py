@@ -12,7 +12,11 @@ from errands.lib.logging import Log
 from errands.lib.sync.sync import Sync
 from errands.lib.utils import get_children
 from errands.state import State
-from errands.widgets.shared.components.buttons import ErrandsButton, ErrandsToggleButton
+from errands.widgets.shared.components.buttons import (
+    ErrandsButton,
+    ErrandsSearchButton,
+    ErrandsToggleButton,
+)
 from errands.widgets.shared.components.entries import ErrandsEntryRow, ErrandsSearchBar
 from errands.widgets.shared.components.header_bar import ErrandsHeaderBar
 from errands.widgets.shared.components.toolbar_view import ErrandsToolbarView
@@ -98,15 +102,7 @@ class ErrandsTaskListPage(Adw.Bin):
         search_bar: ErrandsSearchBar = ErrandsSearchBar(
             on_search_changed=self.__on_search_change, margin_start=8, margin_end=8
         )
-        self.search_btn: Gtk.ToggleButton = Gtk.ToggleButton(
-            icon_name="errands-search-symbolic", tooltip_text=_("Toggle Search")
-        )
-        self.search_btn.bind_property(
-            "active",
-            search_bar,
-            "search-mode-enabled",
-            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
-        )
+        self.search_btn: ErrandsSearchButton = ErrandsSearchButton(search_bar)
 
         top_entry: Adw.Clamp = Adw.Clamp(
             maximum_size=1000,
