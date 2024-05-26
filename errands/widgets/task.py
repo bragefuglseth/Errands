@@ -32,12 +32,12 @@ class Task(Gtk.ListBoxRow):
     purging: bool = False
     can_sync: bool = True
 
-    def __init__(self, task_data, parent) -> None:
+    def __init__(self, task_data: TaskData) -> None:
         super().__init__()
         self.task_data: TaskData = task_data
         self.list_uid = self.task_data.list_uid
         self.uid = self.task_data.uid
-        self.parent = parent
+        self.parent = State.task_list_page
         self.__build_ui()
         self.__add_actions()
         self.__load_sub_tasks()

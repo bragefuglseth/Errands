@@ -96,11 +96,12 @@ class State:
         cls.attachments_window = ErrandsAttachmentsWindow()
 
         # Create models
-        from errands.lib.data import TaskDataGObject, UserData
+        from errands.lib.data import UserData
+        from errands.widgets.task import Task
 
-        cls.tasks_model = Gio.ListStore(item_type=TaskDataGObject)
+        cls.tasks_model = Gio.ListStore(item_type=Task)
         for task in UserData.tasks:
-            cls.tasks_model.append(TaskDataGObject(task))
+            cls.tasks_model.append(Task(task))
 
     @classmethod
     def get_tasks(cls) -> list[Task]:

@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-from gi.repository import Adw, GLib, GObject, Gtk, Gio  # type:ignore
+from gi.repository import Adw, Gio, GLib, GObject, Gtk  # type:ignore
 
 from errands.lib.animation import scroll
-from errands.lib.data import TaskData, TaskDataGObject, UserData
+from errands.lib.data import TaskData, UserData
 from errands.lib.gsettings import GSettings
 from errands.lib.logging import Log
 from errands.lib.sync.sync import Sync
@@ -16,7 +16,6 @@ from errands.widgets.shared.components.buttons import ErrandsButton, ErrandsTogg
 from errands.widgets.shared.components.entries import ErrandsEntryRow, ErrandsSearchBar
 from errands.widgets.shared.components.header_bar import ErrandsHeaderBar
 from errands.widgets.shared.components.toolbar_view import ErrandsToolbarView
-from errands.widgets.shared.titled_separator import TitledSeparator
 from errands.widgets.task import Task
 
 
@@ -97,7 +96,7 @@ class ErrandsTaskListPage(Adw.Bin):
 
         # Search Bar
         search_bar: ErrandsSearchBar = ErrandsSearchBar(
-            on_search_changed=self.__on_search_change, margin_start=10, margin_end=10
+            on_search_changed=self.__on_search_change, margin_start=8, margin_end=8
         )
         self.search_btn: Gtk.ToggleButton = Gtk.ToggleButton(
             icon_name="errands-search-symbolic", tooltip_text=_("Toggle Search")
@@ -193,9 +192,15 @@ class ErrandsTaskListPage(Adw.Bin):
         self.sorter_completed.changed(0)
 
     def __load_tasks(self) -> None:
-        self.tasks_model = Gio.ListStore(item_type=Task)
-        for task in [t for t in UserData.tasks if not t.deleted and not t.parent]:
-            self.tasks_model.append(Task(task, self))
+        # self.tasks_model = Gio.ListStore(item_type=Task)
+        # for task in [t for t in UserData.tasks if not t.deleted and not t.parent]:
+        #     self.tasks_model.append(Task(task))
+        self.tasks_model = Gtk.FilterListModel(
+            filter=Gtk.CustomFilter.new(
+                match_func=lambda task: not task.task_data.parent
+            ),
+            model=State.tasks_model,
+        )
 
         self.sorter_completed: Gtk.CustomSorter = Gtk.CustomSorter.new(
             sort_func=self.sort_completed_func
@@ -238,9 +243,9 @@ class ErrandsTaskListPage(Adw.Bin):
         Log.info(f"Task List: Add task '{task.uid}'")
 
         if GSettings.get("task-list-new-task-position-top"):
-            self.tasks_model.insert(0, Task(task, self))
+            self.tasks_model.insert(0, Task(task))
         else:
-            self.tasks_model.append(Task(task, self))
+            self.tasks_model.append(Task(task))
 
     def delete_list(self, uid: str):
         Log.info(f"Task List: Delete list '{uid}'")

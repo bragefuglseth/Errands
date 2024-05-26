@@ -24,7 +24,6 @@ class ErrandsEntry(Gtk.Entry):
 class ErrandsSearchBar(Gtk.SearchBar):
     def __init__(self, on_search_changed: Callable, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.set_key_capture_widget(State.task_list_page)
         search_entry = Gtk.SearchEntry(
             hexpand=True,
             search_delay=100,
