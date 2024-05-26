@@ -13,7 +13,7 @@ from errands.lib.sync.sync import Sync
 from errands.lib.utils import get_children
 from errands.state import State
 from errands.widgets.shared.components.buttons import ErrandsButton, ErrandsToggleButton
-from errands.widgets.shared.components.entries import ErrandsEntryRow
+from errands.widgets.shared.components.entries import ErrandsEntryRow, ErrandsSearchBar
 from errands.widgets.shared.components.header_bar import ErrandsHeaderBar
 from errands.widgets.shared.components.toolbar_view import ErrandsToolbarView
 from errands.widgets.shared.titled_separator import TitledSeparator
@@ -95,12 +95,27 @@ class ErrandsTaskListPage(Adw.Bin):
         self.dnd_ctrl.connect("motion", self._on_dnd_scroll, adj)
         self.add_controller(self.dnd_ctrl)
 
+        # Search Bar
+        search_bar: ErrandsSearchBar = ErrandsSearchBar(
+            on_search_changed=self.__on_search_change, margin_start=10, margin_end=10
+        )
+        self.search_btn: Gtk.ToggleButton = Gtk.ToggleButton(
+            icon_name="errands-search-symbolic", tooltip_text=_("Toggle Search")
+        )
+        self.search_btn.bind_property(
+            "active",
+            search_bar,
+            "search-mode-enabled",
+            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+        )
+
         top_entry: Adw.Clamp = Adw.Clamp(
             maximum_size=1000,
             tightening_threshold=300,
             margin_end=6,
             margin_start=6,
             child=ErrandsEntryRow(
+                margin_top=6,
                 margin_bottom=6,
                 margin_end=6,
                 margin_start=6,
@@ -110,6 +125,13 @@ class ErrandsTaskListPage(Adw.Bin):
                 css_classes=["card"],
                 on_entry_activated=self._on_task_added,
             ),
+        )
+        top_entry_rev: Gtk.Revealer = Gtk.Revealer(child=top_entry)
+        self.search_btn.bind_property(
+            "active",
+            top_entry_rev,
+            "reveal-child",
+            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN,
         )
 
         bottom_entry: Adw.Clamp = Adw.Clamp(
@@ -145,8 +167,10 @@ class ErrandsTaskListPage(Adw.Bin):
                             self.delete_completed_btn,
                         ],
                         title_widget=self.title,
+                        end_children=[self.search_btn],
                     ),
-                    top_entry,
+                    search_bar,
+                    top_entry_rev,
                 ],
                 content=self.scrl,
                 bottom_bars=[bottom_entry],
@@ -159,6 +183,7 @@ class ErrandsTaskListPage(Adw.Bin):
         self.list_uid = list_uid
         for task in self.tasks:
             task.set_visible(task.list_uid == self.list_uid)
+        self.search_btn.set_active(False)
         self.update_title()
 
     def sort_completed_func(self, task1: Task, task2: Task, *_) -> int:
@@ -363,3 +388,14 @@ class ErrandsTaskListPage(Adw.Bin):
 
         self.update_title()
         Sync.sync()
+
+    def __on_search_change(self, entry: Gtk.SearchEntry) -> None:
+        text: str = entry.get_text()
+        for task in self.tasks:
+            if task.list_uid == self.list_uid:
+                match_found: bool = (
+                    text in task.task_data.text
+                    or text in task.task_data.notes
+                    or text in "".join(task.task_data.tags)
+                )
+                task.set_visible(match_found)
