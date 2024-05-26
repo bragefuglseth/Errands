@@ -106,7 +106,7 @@ class State:
     def get_tasks(cls) -> list[Task]:
         """All Tasks in all Task Lists"""
 
-        return get_children(cls.task_list_page.all_tasks)
+        return cls.task_list_page.all_tasks
 
     @classmethod
     def get_task(cls, list_uid: str, uid: str) -> Task:

@@ -77,7 +77,6 @@ class Tags(Adw.Bin):
                                 children=[
                                     ErrandsEntryRow(
                                         on_entry_activated=self._on_tag_added,
-                                        height_request=60,
                                         activatable=False,
                                         title=_("Add new Tag"),
                                     )

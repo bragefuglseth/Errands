@@ -91,7 +91,7 @@ class Task(Gtk.ListBoxRow):
 
     def __build_ui(self):
         self.add_css_class("task")
-        # self.set_focusable(False)
+        self.set_focusable(False)
 
         # --- TOP DROP AREA --- #
         top_drop_area_img: Gtk.Image = Gtk.Image(

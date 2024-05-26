@@ -23,6 +23,7 @@ class ErrandsTaskListSidebarRow(Gtk.ListBoxRow):
     def __init__(self, list_data: TaskListData) -> None:
         super().__init__()
         self.list_data = list_data
+        self.name = list_data.name
         self.__add_actions()
         self.__build_ui()
         self.update_ui(False)
@@ -195,12 +196,18 @@ class ErrandsTaskListSidebarRow(Gtk.ListBoxRow):
             )
         )
 
+    def update_counter(self):
+        n_total, n_completed = UserData.get_status(self.list_data.uid)
+        n_uncompleted: int = n_total - n_completed
+        self.size_counter.set_label(str(n_uncompleted) if n_uncompleted > 0 else "")
+
     def update_ui(self, update_task_list_ui: bool = True):
         Log.debug(f"Task List Row: Update UI '{self.list_data.uid}'")
 
         # Update title
-        self.label.set_label(self.list_data.name)
-        State.task_list_page.title.set_title(self.list_data.name)
+        self.name = self.list_data.name
+        self.label.set_label(self.name)
+        State.task_list_page.title.set_title(self.name)
 
         color: Gdk.RGBA = Gdk.RGBA()
         color.parse(self.list_data.color)

@@ -175,7 +175,7 @@ class Sidebar(Adw.Bin):
     def __select_last_opened_item(self) -> None:
         for row in self.rows:
             if hasattr(row, "name") and row.name == GSettings.get("last-open-list"):
-                Log.debug("Sidebar: Select last opened page")
+                Log.debug(f"Sidebar: Select last opened page: '{row.name}'")
                 if not row.get_realized():
                     row.connect("realize", lambda *_: self.list_box.select_row(row))
                 else:
@@ -207,6 +207,7 @@ class Sidebar(Adw.Bin):
 
         row: ErrandsTaskListSidebarRow = ErrandsTaskListSidebarRow(list_dict)
         self.list_box.append(row)
+        row.update_counter()
         self.status_page.set_visible(False)
         return row
 
