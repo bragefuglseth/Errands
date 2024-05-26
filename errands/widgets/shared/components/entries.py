@@ -4,9 +4,7 @@
 
 from typing import Callable
 
-from gi.repository import Adw, Gtk
-
-from errands.state import State  # type:ignore
+from gi.repository import Adw, Gtk  # type:ignore
 
 
 class ErrandsEntryRow(Adw.EntryRow):

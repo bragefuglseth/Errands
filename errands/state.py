@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 
 from gi.repository import Adw, Gio  # type:ignore
 
-from errands.lib.utils import get_children
-
 if TYPE_CHECKING:
     from errands.application import ErrandsApplication
     from errands.lib.notifications import ErrandsNotificationsDaemon

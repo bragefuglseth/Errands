@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk  # type:ignore
+from gi.repository import Adw, GLib, GObject, Gtk  # type:ignore
 
 from errands.lib.animation import scroll
 from errands.lib.data import TaskData, UserData
