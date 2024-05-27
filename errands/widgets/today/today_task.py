@@ -19,7 +19,6 @@ from errands.widgets.shared.components.buttons import ErrandsButton, ErrandsChec
 from errands.widgets.shared.components.menus import ErrandsMenuItem, ErrandsSimpleMenu
 from errands.widgets.shared.task_toolbar.toolbar import ErrandsTaskToolbar
 from errands.widgets.task import Tag, Task
-from errands.widgets.task_list.task_list import TaskList
 
 if TYPE_CHECKING:
     from errands.widgets.today.today import Today
