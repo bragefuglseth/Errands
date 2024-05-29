@@ -45,7 +45,7 @@ class ErrandsTaskListSidebarRow(Gtk.ListBoxRow):
 
                 Log.info(f"Lists: Delete list '{self.list_data.uid}'")
                 UserData.delete_list(self.list_data.uid)
-                # State.sidebar.remove_task_list(self)
+                State.sidebar.remove_task_list(self)
                 Sync.sync()
 
             ConfirmDialog(

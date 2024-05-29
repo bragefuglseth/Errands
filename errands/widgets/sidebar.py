@@ -163,13 +163,21 @@ class Sidebar(Adw.Bin):
             )
         )
 
-    def remove_task_list(self, row) -> None:
-        Log.debug(f"Sidebar: Delete list {row.uid}")
+    def remove_task_list(self, row: ErrandsTaskListSidebarRow) -> None:
+        list_uid: str = row.list_data.uid
+        Log.debug(f"Sidebar: Delete list {list_uid}")
+        # Select previous row
         self.list_box.select_row(row.get_prev_sibling())
-        State.view_stack.remove(row.task_list)
+        # Remove row
         self.list_box.remove(row)
-        State.trash_sidebar_row.update_ui()
-        State.today_page.update_ui()
+        # Get tasks idxs to remove
+        to_remove: list[int] = []
+        for i in range(State.tasks_model.get_n_items()):
+            if State.tasks_model.get_item(i).task_data.list_uid == list_uid:
+                to_remove.append(i)
+        # Loop in reverse to not change idxs and remove tasks from model
+        for i in reversed(to_remove):
+            State.tasks_model.remove(i)
         self.update_status()
 
     def __select_last_opened_item(self) -> None:
