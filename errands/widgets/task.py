@@ -24,7 +24,6 @@ from errands.widgets.shared.components.buttons import (
 from errands.widgets.shared.components.entries import ErrandsEntry
 from errands.widgets.shared.components.menus import ErrandsMenuItem, ErrandsSimpleMenu
 from errands.widgets.shared.task_toolbar import ErrandsTaskToolbar
-from errands.widgets.shared.titled_separator import TitledSeparator
 
 
 class Task(Gtk.ListBoxRow):
@@ -34,7 +33,6 @@ class Task(Gtk.ListBoxRow):
 
     def __init__(self, task_data: TaskData) -> None:
         super().__init__()
-        Log.debug("Add Task")
         self.task_data: TaskData = task_data
         self.list_uid = self.task_data.list_uid
         self.uid = self.task_data.uid
@@ -336,14 +334,16 @@ class Task(Gtk.ListBoxRow):
             ],
         )
 
-        self.set_child(
-            ErrandsBox(
+        self.revealer: Gtk.Revealer = Gtk.Revealer(
+            child=ErrandsBox(
                 orientation=Gtk.Orientation.VERTICAL,
                 margin_bottom=6,
                 margin_top=6,
                 children=[self.top_drop_area, self.main_box],
             )
         )
+
+        self.set_child(self.revealer)
 
     def __build_toolbar(self) -> None:
         """
@@ -364,12 +364,6 @@ class Task(Gtk.ListBoxRow):
             and t.list_uid == self.task_data.list_uid
             and t.parent == self.task_data.uid
         )
-        for task in tasks:
-            new_task = Task(task, self)
-            if task.completed:
-                self.completed_task_list.append(new_task)
-            else:
-                self.uncompleted_task_list.append(new_task)
 
     def sort_completed_func(self, task1: Task, task2: Task, *_) -> int:
         return int(task1.task_data.completed) - int(task2.task_data.completed)
@@ -395,7 +389,7 @@ class Task(Gtk.ListBoxRow):
         self.tasks_list.bind_model(self.completed_sort_model, lambda task: task)
 
         self.sub_tasks.set_reveal_child(self.task_data.expanded)
-        # self.toggle_visibility(not self.task_data.trash)
+        self.toggle_visibility(not self.task_data.trash)
         self.expand(self.task_data.expanded)
         self.update_color()
         self.update_title()
@@ -461,7 +455,7 @@ class Task(Gtk.ListBoxRow):
     def add_task(self, task: TaskData) -> Task:
         Log.info(f"Task '{self.uid}': Add sub-task '{task.uid}'")
 
-        State.task_list_page.add_task(Task(task))
+        State.task_list_page.add_task(task)
 
     def get_prop(self, prop: str) -> Any:
         return UserData.get_prop(self.list_uid, self.uid, prop)
@@ -531,7 +525,7 @@ class Task(Gtk.ListBoxRow):
         UserData.update_props(self.list_uid, self.uid, props, values)
 
     def toggle_visibility(self, on: bool) -> None:
-        GLib.idle_add(self.set_reveal_child, on)
+        GLib.idle_add(self.revealer.set_reveal_child, on)
 
     def update_title(self) -> None:
         # Update title
@@ -898,7 +892,7 @@ class Task(Gtk.ListBoxRow):
 
         self.update_title()
         self.update_progress_bar()
-        self.task_list.update_title()
+        State.task_list_page.update_title()
 
         # Sync
         Sync.sync()

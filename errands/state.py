@@ -83,7 +83,6 @@ class State:
 
     @classmethod
     def init(cls) -> None:
-        print("Init State")
         # Create windows widgets
         from errands.widgets.shared.task_toolbar import (
             ErrandsAttachmentsWindow,
@@ -99,13 +98,9 @@ class State:
         from errands.lib.data import UserData
         from errands.widgets.task import Task
 
-        print("Create Model")
-
         cls.tasks_model = Gio.ListStore(item_type=Task)
         for task in UserData.tasks:
             cls.tasks_model.append(Task(task))
-
-        print("sss")
 
     @classmethod
     def get_tasks(cls) -> list[Task]:
