@@ -121,7 +121,9 @@ class ErrandsTaskListPage(Adw.Bin):
                 on_entry_activated=self._on_task_added,
             ),
         )
-        top_entry_rev: Gtk.Revealer = Gtk.Revealer(child=top_entry)
+        top_entry_rev: Gtk.Revealer = Gtk.Revealer(
+            child=top_entry, transition_type=Gtk.RevealerTransitionType.SLIDE_UP
+        )
         self.search_btn.bind_property(
             "active",
             top_entry_rev,
@@ -188,9 +190,6 @@ class ErrandsTaskListPage(Adw.Bin):
         self.sorter_completed.changed(0)
 
     def __load_tasks(self) -> None:
-        # self.tasks_model = Gio.ListStore(item_type=Task)
-        # for task in [t for t in UserData.tasks if not t.deleted and not t.parent]:
-        #     self.tasks_model.append(Task(task))
         self.tasks_model = Gtk.FilterListModel(
             filter=Gtk.CustomFilter.new(
                 match_func=lambda task: not task.task_data.parent

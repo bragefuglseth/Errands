@@ -34,13 +34,14 @@ class Task(Gtk.ListBoxRow):
 
     def __init__(self, task_data: TaskData) -> None:
         super().__init__()
+        Log.debug("Add Task")
         self.task_data: TaskData = task_data
         self.list_uid = self.task_data.list_uid
         self.uid = self.task_data.uid
         self.parent = State.task_list_page
         self.__build_ui()
         self.__add_actions()
-        self.__load_sub_tasks()
+        self.__load_tasks()
         self.block_signals = False
 
     def __repr__(self) -> str:
@@ -292,25 +293,12 @@ class Task(Gtk.ListBoxRow):
 
         # --- SUB TASKS --- #
 
-        # Uncompleted tasks
-        self.uncompleted_task_list: Gtk.Box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL
-        )
-
-        # Separator
-        self.task_lists_separator: Adw.Bin = Adw.Bin(
-            child=TitledSeparator(_("Completed"), (24, 24, 0, 0))
-        )
-
-        # Completed tasks
-        self.completed_task_list: Gtk.Box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL
-        )
-        self.completed_task_list.bind_property(
-            "visible",
-            self.task_lists_separator,
-            "visible",
-            GObject.BindingFlags.SYNC_CREATE,
+        self.tasks_list: Gtk.ListBox = Gtk.ListBox(
+            css_classes=["transparent"],
+            selection_mode=0,
+            focusable=False,
+            margin_start=6,
+            margin_end=6,
         )
 
         self.sub_tasks = Gtk.Revealer(
@@ -326,9 +314,7 @@ class Task(Gtk.ListBoxRow):
                         placeholder_text=_("Add new Sub-Task"),
                         on_activate=self._on_sub_task_added,
                     ),
-                    self.uncompleted_task_list,
-                    self.task_lists_separator,
-                    self.completed_task_list,
+                    self.tasks_list,
                 ],
             )
         )
@@ -385,8 +371,28 @@ class Task(Gtk.ListBoxRow):
             else:
                 self.uncompleted_task_list.append(new_task)
 
-        if self.task_data.toolbar_shown:
-            self.__build_toolbar()
+    def sort_completed_func(self, task1: Task, task2: Task, *_) -> int:
+        return int(task1.task_data.completed) - int(task2.task_data.completed)
+
+    def sort_tasks(self):
+        self.sorter_completed.changed(0)
+
+    def __load_tasks(self) -> None:
+        self.tasks_model = Gtk.FilterListModel(
+            filter=Gtk.CustomFilter.new(
+                match_func=lambda task: task.task_data.parent == self.task_data.uid
+            ),
+            model=State.tasks_model,
+        )
+
+        self.sorter_completed: Gtk.CustomSorter = Gtk.CustomSorter.new(
+            sort_func=self.sort_completed_func
+        )
+        self.completed_sort_model = Gtk.SortListModel(
+            section_sorter=self.sorter_completed,
+            model=self.tasks_model,
+        )
+        self.tasks_list.bind_model(self.completed_sort_model, lambda task: task)
 
         self.sub_tasks.set_reveal_child(self.task_data.expanded)
         # self.toggle_visibility(not self.task_data.trash)
@@ -395,13 +401,12 @@ class Task(Gtk.ListBoxRow):
         self.update_title()
         self.update_progress_bar()
         self.update_tags_bar()
-        self.update_toolbar()
+
+        if self.task_data.toolbar_shown:
+            self.__build_toolbar()
+            self.update_toolbar()
 
     # ------ PROPERTIES ------ #
-
-    @property
-    def task_list(self) -> TaskList:
-        return State.get_task_list(self.task_data.list_uid)
 
     @property
     def parents_tree(self) -> list[Task]:
@@ -440,23 +445,9 @@ class Task(Gtk.ListBoxRow):
     def tasks(self) -> list[Task]:
         """Top-level Tasks"""
 
-        return self.uncompleted_tasks + self.completed_tasks
-
-    @property
-    def uncompleted_tasks(self) -> list[Task]:
-        return get_children(self.uncompleted_task_list)
-
-    @property
-    def completed_tasks(self) -> list[Task]:
-        return get_children(self.completed_task_list)
+        return get_children(self.tasks_list)
 
     # ------ PUBLIC METHODS ------ #
-
-    # def set_data(self, data: TaskData):
-    #     self.task_data = data
-    #     self.list_uid = self.task_data.list_uid
-    #     self.uid = self.task_data.uid
-    #     self.__load_sub_tasks()
 
     def add_tag(self, tag: str) -> None:
         self.tags_bar.append(Tag(tag, self))
@@ -470,14 +461,7 @@ class Task(Gtk.ListBoxRow):
     def add_task(self, task: TaskData) -> Task:
         Log.info(f"Task '{self.uid}': Add sub-task '{task.uid}'")
 
-        new_task: Task = Task(task, self)
-        if task.completed:
-            self.completed_task_list.prepend(new_task)
-        else:
-            if GSettings.get("task-list-new-task-position-top"):
-                self.uncompleted_task_list.prepend(new_task)
-            else:
-                self.uncompleted_task_list.append(new_task)
+        State.task_list_page.add_task(Task(task))
 
     def get_prop(self, prop: str) -> Any:
         return UserData.get_prop(self.list_uid, self.uid, prop)
@@ -571,9 +555,9 @@ class Task(Gtk.ListBoxRow):
             self.just_added = False
 
         # Update separator
-        self.task_lists_separator.get_child().set_visible(
-            n_completed > 0 and n_completed != n_total
-        )
+        # self.task_lists_separator.get_child().set_visible(
+        #     n_completed > 0 and n_completed != n_total
+        # )
 
     def update_tags_bar(self) -> None:
         tags: str = self.task_data.tags
