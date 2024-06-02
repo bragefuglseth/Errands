@@ -505,17 +505,8 @@ class Task(Gtk.ListBoxRow):
 
     def update_props(self, props: list[str], values: list[Any]) -> None:
         # Update 'changed_at' if it's not in local props
-        local_props: tuple[str] = (
-            "deleted",
-            "expanded",
-            "synced",
-            "toolbar_shown",
-            "trash",
-            "color",
-            "notified",
-        )
         for prop in props:
-            if prop not in local_props:
+            if prop not in self.task_data.local_props:
                 props.append("changed_at")
                 values.append(datetime.now().strftime("%Y%m%dT%H%M%S"))
                 break

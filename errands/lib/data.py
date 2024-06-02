@@ -133,6 +133,19 @@ class TaskData:
         if not self.changed_at:
             self.changed_at = now
 
+    @property
+    def local_props(self) -> tuple[str]:
+        return (
+            "attachments",
+            "color",
+            "deleted",
+            "expanded",
+            "notified",
+            "synced",
+            "toolbar_shown",
+            "trash",
+        )
+
     def to_ical(self, as_calendar: bool = False) -> str:
         """Build VTODO iCal component from TaskData properties"""
 
