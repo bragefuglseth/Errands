@@ -356,15 +356,6 @@ class Task(Gtk.ListBoxRow):
         self.toolbar = ErrandsTaskToolbar(self)
         self.toolbar_rev.set_child(self.toolbar)
 
-    def __load_sub_tasks(self) -> None:
-        tasks: list[TaskData] = (
-            t
-            for t in UserData.tasks
-            if not t.deleted
-            and t.list_uid == self.task_data.list_uid
-            and t.parent == self.task_data.uid
-        )
-
     def sort_completed_func(self, task1: Task, task2: Task, *_) -> int:
         return int(task1.task_data.completed) - int(task2.task_data.completed)
 
@@ -375,6 +366,7 @@ class Task(Gtk.ListBoxRow):
         self.tasks_model = Gtk.FilterListModel(
             filter=Gtk.CustomFilter.new(
                 match_func=lambda task: task.task_data.parent == self.task_data.uid
+                and task.task_data.list_uid == self.task_data.list_uid
             ),
             model=State.tasks_model,
         )
@@ -440,6 +432,16 @@ class Task(Gtk.ListBoxRow):
         """Top-level Tasks"""
 
         return get_children(self.tasks_list)
+
+    @property
+    def tasks_data(self) -> list[TaskData]:
+        return [
+            t
+            for t in UserData.tasks
+            if not t.deleted
+            and t.list_uid == self.task_data.list_uid
+            and t.parent == self.task_data.uid
+        ]
 
     # ------ PUBLIC METHODS ------ #
 
