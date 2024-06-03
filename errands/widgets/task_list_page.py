@@ -393,9 +393,4 @@ class ErrandsTaskListPage(Adw.Bin):
         text: str = entry.get_text()
         for task in self.tasks:
             if task.list_uid == self.list_uid:
-                match_found: bool = (
-                    text in task.task_data.text
-                    or text in task.task_data.notes
-                    or text in "".join(task.task_data.tags)
-                )
-                task.set_visible(match_found)
+                task.search(text)

@@ -395,17 +395,22 @@ class Task(Gtk.ListBoxRow):
     # ------ PROPERTIES ------ #
 
     @property
+    def parent_task(self) -> Task | None:
+        if not self.task_data.parent:
+            return None
+
+        return self.get_parent().get_ancestor(Task)
+
+    @property
     def parents_tree(self) -> list[Task]:
         """Get parent tasks chain"""
 
         parents: list[Task] = []
 
-        def _add(task: Task):
-            if isinstance(task.parent, Task):
-                parents.append(task.parent)
-                _add(task.parent)
-
-        _add(self)
+        parent: Task | None = self.parent_task
+        while parent:
+            parents.append(parent)
+            parent = parent.parent_task
 
         return parents
 
@@ -444,6 +449,19 @@ class Task(Gtk.ListBoxRow):
         ]
 
     # ------ PUBLIC METHODS ------ #
+
+    def search(self, text: str):
+        match_found: bool = (
+            text in self.task_data.text
+            or text in self.task_data.notes
+            or text in "".join(self.task_data.tags)
+        )
+        self.set_visible(match_found)
+        for task in self.tasks:
+            task.search(text)
+        if match_found:
+            for task in self.parents_tree:
+                task.set_visible(True)
 
     def add_tag(self, tag: str) -> None:
         self.tags_bar.append(Tag(tag, self))

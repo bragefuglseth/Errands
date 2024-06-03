@@ -106,11 +106,17 @@ class State:
     def get_tasks(cls) -> list[Task]:
         """All Tasks in all Task Lists"""
 
-        return cls.task_list_page.all_tasks
+        tasks: list[Task] = []
+
+        for i in range(cls.tasks_model.get_n_items()):
+            tasks.append(cls.tasks_model.get_item(i))
+
+        return tasks
 
     @classmethod
     def get_task(cls, list_uid: str, uid: str) -> Task:
-        for task in cls.get_tasks():
+        for i in range(cls.tasks_model.get_n_items()):
+            task: Task = cls.tasks_model.get_item(i)
             if task.uid == uid and task.list_uid == list_uid:
                 return task
 
