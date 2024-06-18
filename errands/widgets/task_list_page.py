@@ -182,6 +182,7 @@ class ErrandsTaskListPage(Adw.Bin):
             task.set_visible(task.list_uid == self.list_uid)
         self.search_btn.set_active(False)
         self.update_title()
+        self.update_show_completed()
 
     def sort_completed_func(self, task1: Task, task2: Task, *_) -> int:
         return int(task1.task_data.completed) - int(task2.task_data.completed)
@@ -204,6 +205,7 @@ class ErrandsTaskListPage(Adw.Bin):
             section_sorter=self.sorter_completed,
             model=self.tasks_model,
         )
+
         self.tasks_list.bind_model(self.completed_sort_model, lambda task: task)
 
     # ------ PROPERTIES ------ #
@@ -250,6 +252,16 @@ class ErrandsTaskListPage(Adw.Bin):
                 task.purge()
 
     # - UPDATE UI FUNCTIONS - #
+
+    def update_show_completed(self):
+        if self.list_uid:
+            show_completed: bool = UserData.get_list_prop(
+                self.list_uid, "show_completed"
+            )
+            print(show_completed)
+            self.toggle_completed_btn.set_active(show_completed)
+            self._on_toggle_completed_btn_toggled(self.toggle_completed_btn, None)
+            # if show_completed != self.toggle_completed_btn.get_active():
 
     def update_title(self) -> None:
         Log.debug(f"Task List '{self.list_uid}': Update title")
@@ -341,13 +353,18 @@ class ErrandsTaskListPage(Adw.Bin):
                 task.delete()
         self.update_ui()
 
-    def _on_toggle_completed_btn_toggled(self, btn: Gtk.ToggleButton) -> None:
-        if not hasattr(self, "completed_task_list"):
-            return
-        self.completed_task_list.set_visible(btn.get_active())
-        for task in self.all_tasks:
-            task.completed_task_list.set_visible(btn.get_active())
+    def _on_toggle_completed_btn_toggled(self, btn: Gtk.ToggleButton, _) -> None:
+        print(btn.get_active())
         UserData.update_list_prop(self.list_uid, "show_completed", btn.get_active())
+        for task in self.all_tasks:
+            if task.task_data.completed and task.list_uid == self.list_uid:
+                task.set_visible(btn.get_active())
+                print(task.get_visible())
+        # if not hasattr(self, "completed_task_list"):
+        #     return
+        # self.completed_task_list.set_visible(btn.get_active())
+        # for task in self.all_tasks:
+        #     task.completed_task_list.set_visible(btn.get_active())
 
     def _on_scroll_up_btn_clicked(self, btn: Gtk.ToggleButton) -> None:
         scroll(self.scrl, False)

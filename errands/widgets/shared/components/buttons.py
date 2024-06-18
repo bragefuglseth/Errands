@@ -25,7 +25,7 @@ class ErrandsToggleButton(Gtk.ToggleButton):
     def __init__(self, on_toggle: Callable = None, **kwargs) -> None:
         super().__init__(**kwargs)
         if on_toggle:
-            self.connect("toggled", on_toggle)
+            self.connect("notify::active", on_toggle)
 
 
 class ErrandsSpinButton(Gtk.SpinButton):

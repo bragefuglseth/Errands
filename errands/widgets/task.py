@@ -9,7 +9,6 @@ from typing import Any
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # type:ignore
 
 from errands.lib.data import TaskData, UserData
-from errands.lib.gsettings import GSettings
 from errands.lib.logging import Log
 from errands.lib.markup import Markup
 from errands.lib.sync.sync import Sync
